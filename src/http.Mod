@@ -1,5 +1,6 @@
 MODULE http;
-IMPORT IntStr := oocIntStr, Strings, Internet, vpkLogger, Out, strTypes, strUtils;
+IMPORT IntStr := oocIntStr, Strings, Files, Out,
+       Internet, strTypes, strUtils;
 CONST
   defHeaderLength = 1024;
      defUserAgent = "oberon-http-client/1.0";
@@ -30,9 +31,9 @@ CONST
 
 TYPE
 
-  httpClient = POINTER TO httpClientDesc;
+  httpClient* = POINTER TO httpClientDesc;
 
-  httpClientDesc = RECORD
+  httpClientDesc* = RECORD
     host-, port-, path- : strTypes.pstring;
                  socket : Internet.Socket;
          connectionFlag : BOOLEAN;
@@ -59,16 +60,14 @@ TYPE
           rspnReportTo- : strTypes.pstring;
                rspnNEL- : strTypes.pstring;
              rspnCFRAY- : strTypes.pstring;
+              rspnBody- : strTypes.pstring;
 
                 Create* : PROCEDURE(host, port, path: ARRAY OF CHAR): httpClient;
                    Get* : PROCEDURE(VAR http: httpClient): strTypes.pstring;
           setUserAgent* : PROCEDURE(VAR http: httpClient; ua: ARRAY OF CHAR);
             clearState* : PROCEDURE(VAR http: httpClient);
+                  Save* : PROCEDURE(VAR http: httpClient);
   END;
-
-VAR (* these variables are only for testing *)
-  http: httpClient;
-  answer, answer2: strTypes.pstring;
 
 PROCEDURE Empty(VAR string: strTypes.pstring);
 VAR i : LONGINT;
@@ -102,41 +101,9 @@ BEGIN
   http^.rspnReportTo          := NIL;
   http^.rspnNEL               := NIL;
   http^.rspnCFRAY             := NIL;
+  http^.rspnBody              := NIL;
 
 END clearstate;
-
-PROCEDURE getClean(buff: ARRAY OF CHAR; VAR clean: strTypes.pstring);
-VAR
-  i: INTEGER;
-  lineIsHeader, EOL, notFirstLine: BOOLEAN;
-BEGIN
-  i := 0;
-  notFirstLine := FALSE;
-  lineIsHeader := FALSE;
-  EOL := FALSE;
-                Out.String("entered repeat in getClean"); Out.Ln;
-  REPEAT
-    IF EOL THEN
-      lineIsHeader := FALSE;
-      EOL := FALSE;
-      notFirstLine := TRUE
-    END;
-
-    IF buff[i] = ":" THEN lineIsHeader := TRUE; Out.String("found ':'"); Out.Ln; END;
-
-    IF ((buff[i - 1] = 0DX) & (buff[i] = 0AX)) THEN EOL := TRUE END;
-
-    INC(i);
-    Out.String("i is now "); Out.Int(i, 0); Out.Ln;
-  UNTIL (i + 2 > Strings.Length(buff)) OR (~lineIsHeader & EOL & notFirstLine);
-
-    Out.String("after until i is now "); Out.Int(i, 0); Out.Ln;
-                Out.String("exited repeat in getClean"); Out.Ln;
-  NEW(clean, Strings.Length(buff)  + 2);
-                Out.String("starting extract"); Out.Ln;
-  Strings.Extract(buff, i, Strings.Length(buff), clean^);
-                Out.String("finished extract"); Out.Ln;
-END getClean;
 
 PROCEDURE AppendEOLAndClean(buff: ARRAY OF CHAR; VAR buffClean: strTypes.pstring);
 VAR
@@ -344,6 +311,7 @@ BEGIN
     Out.String("until exited"); Out.Ln;
   Internet.Disconnect(http^.socket);
   Out.String("disconnected"); Out.Ln;
+  http^.rspnBody := buff;
   RETURN buff
 END get;
 
@@ -410,6 +378,31 @@ BEGIN
   strUtils.string2pstring(ua, http^.userAgent)
 END setuseragent;
 
+PROCEDURE save(VAR http: httpClient);
+VAR
+  F: Files.File; R: Files.Rider;
+  out: strTypes.pstring;
+  i: LONGINT;
+BEGIN
+  NEW(out, Strings.Length(http^.path^)+1);
+  COPY(http^.path^, out^);
+  strUtils.RemoveLeftChars(out^, '/');
+  F := Files.New(out^);
+  IF F # NIL THEN
+    Out.String("file created"); Out.Ln;
+    Files.Set(R, F, 0);
+    i := 0;
+    REPEAT
+      Files.Write(R, http^.rspnBody[i]);
+      INC(i)
+    UNTIL i >= Strings.Length(http^.rspnBody^);
+    Out.String("file written "); Out.Int(i, 0); Out.Ln;
+    Files.Register(F);
+  ELSE
+    Out.String("failed to create file "); Out.String(out^); Out.Ln;
+  END
+END save;
+
 PROCEDURE Create*(host, port, path: ARRAY OF CHAR): httpClient;
 VAR
   http: httpClient;
@@ -425,6 +418,7 @@ BEGIN
   http^.Get := get;
   http^.setUserAgent := setuseragent;
   http^.clearState := clearstate;
+  http^.Save := save;
   formReqHeader(http);
 
   http^.rspnPstrings          := NIL;
@@ -445,14 +439,9 @@ BEGIN
   http^.rspnReportTo          := NIL;
   http^.rspnNEL               := NIL;
   http^.rspnCFRAY             := NIL;
+  http^.rspnBody              := NIL;
 
   RETURN http
 END Create;
 
-BEGIN
-  (* Example usage of the get procedure *)
-   http := Create("norayr.am", "80", "/test.html");
-   answer := http.Get(http);
-   (*getClean(answer^, answer2);*)
-   vpkLogger.Log(answer^);
 END http.

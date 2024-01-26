@@ -47,7 +47,7 @@ buildThis:
 	cd $(BUILD) && $(VOC) -s $(mkfile_dir_path)/src/http.Mod
 
 tests:
-	#cd $(BUILD) && $(VOC) $(mkfile_dir_path)/test/testList.Mod -m
+	cd $(BUILD) && $(VOC) $(mkfile_dir_path)/test/testHttp.Mod -m
 	#build/testList
 
 clean:
