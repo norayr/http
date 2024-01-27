@@ -382,13 +382,17 @@ END setuseragent;
 PROCEDURE save(VAR http: httpClient);
 VAR
   F: Files.File; R: Files.Rider;
-  out: strTypes.pstring;
+  out0, out1: strTypes.pstring;
   i: LONGINT;
+  pos: INTEGER;
 BEGIN
-  NEW(out, Strings.Length(http^.path^)+1);
-  COPY(http^.path^, out^);
-  strUtils.RemoveLeftChars(out^, '/');
-  F := Files.New(out^);
+  NEW(out0, Strings.Length(http^.path^)+1);
+  NEW(out1, Strings.Length(http^.path^)+1);
+  COPY(http^.path^, out0^);
+  strUtils.RemoveRightChars(out0^, '/');
+  pos := strUtils.Rpos(out0^, '/');
+  Strings.Extract(out0^, pos+1, Strings.Length(out0^)-pos-1, out1^);
+  F := Files.New(out1^);
   IF F # NIL THEN
     Out.String("file created"); Out.Ln;
     Files.Set(R, F, 0);
@@ -400,7 +404,7 @@ BEGIN
     Out.String("file written "); Out.Int(i, 0); Out.Ln;
     Files.Register(F);
   ELSE
-    Out.String("failed to create file "); Out.String(out^); Out.Ln;
+    Out.String("failed to create file "); Out.String(out1^); Out.Ln;
   END
 END save;
 
