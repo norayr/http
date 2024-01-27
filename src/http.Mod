@@ -281,6 +281,7 @@ BEGIN
     header := readHeader(http);
     processHeader(http, header^);
     NEW(tmpBuff, http^.rspnContentLength);
+    buff := NIL;
     readFailure := FALSE; eof := FALSE;
     REPEAT
       Out.String("repeat"); Out.Ln;
@@ -291,22 +292,22 @@ BEGIN
       readAll := readAll + readThisTime;
       Out.String("readThisTime="); Out.Int(readThisTime, 0); Out.Ln;
       Out.String("readAll="); Out.Int(readAll, 0); Out.Ln;
-      strUtils.append(tmpBuff, buff);
-      Out.String("-----------------------------"); Out.Ln;
+      IF buff = NIL THEN
+        strUtils.appendNumChars(tmpBuff, readThisTime, buff, 0);
+      ELSE
+        strUtils.appendNumChars(tmpBuff, readThisTime, buff, LEN(buff^));
+      END;
+     (* Out.String("-----------------------------"); Out.Ln;
       Out.String("tmpBuff is: '"); Out.String(tmpBuff^); Out.Char("'"); Out.Ln;
       Out.String("-----------------------------"); Out.Ln;
       Out.String("buff is: '"); Out.String(buff^); Out.Char("'"); Out.Ln;
-      Out.String("-----------------------------"); Out.Ln;
+      Out.String("-----------------------------"); Out.Ln;*)
       Out.String("reached until"); Out.Ln;
       IF http^.connectionFlag THEN Out.String("true") ELSE Out.String("false") END; Out.Ln;
-      Out.String("length tmpBuff "); Out.Int(Strings.Length(tmpBuff^), 0); Out.Ln;
       Out.String("len tmpBuff "); Out.Int(LEN(tmpBuff^), 0); Out.Ln;
-      Out.String("length buff "); Out.Int(Strings.Length(buff^), 0); Out.Ln;
       Out.String("len buff "); Out.Int(LEN(buff^), 0); Out.Ln;
       Out.String("content length "); Out.Int(http^.rspnContentLength, 0); Out.Ln;
-      Out.String("readThisTime="); Out.Int(readThisTime, 0); Out.Ln;
-      Out.String("readAll="); Out.Int(readAll, 0); Out.Ln;
-    UNTIL (Strings.Length(buff^) >= http^.rspnContentLength) OR eof OR readFailure OR ~http^.connectionFlag OR (http^.rspnContentLength = 0);
+    UNTIL (readAll >= http^.rspnContentLength) OR eof OR readFailure OR ~http^.connectionFlag OR (http^.rspnContentLength = 0);
   UNTIL eof OR (readAll >= http^.rspnContentLength);
     Out.String("until exited"); Out.Ln;
   Internet.Disconnect(http^.socket);
@@ -395,7 +396,7 @@ BEGIN
     REPEAT
       Files.Write(R, http^.rspnBody[i]);
       INC(i)
-    UNTIL i >= Strings.Length(http^.rspnBody^);
+    UNTIL i >= http^.rspnContentLength;
     Out.String("file written "); Out.Int(i, 0); Out.Ln;
     Files.Register(F);
   ELSE
