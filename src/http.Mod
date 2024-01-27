@@ -267,15 +267,15 @@ BEGIN
     HALT(5)
   END;
   REPEAT
-        Out.String("sending '"); Out.String(http^.reqHeader[0]^); Out.Char("'"); Out.Ln;
+  (*      Out.String("sending '"); Out.String(http^.reqHeader[0]^); Out.Char("'"); Out.Ln;*)
     http^.connectionFlag := Internet.Write(http^.socket, http^.reqHeader[0]^);
-        Out.String("sending '"); Out.String(http^.reqHeader[1]^); Out.Char("'"); Out.Ln;
+  (*      Out.String("sending '"); Out.String(http^.reqHeader[1]^); Out.Char("'"); Out.Ln;*)
     http^.connectionFlag := Internet.Write(http^.socket, http^.reqHeader[1]^);
-        Out.String("sending '"); Out.String(http^.reqHeader[2]^); Out.Char("'"); Out.Ln;
+    (*    Out.String("sending '"); Out.String(http^.reqHeader[2]^); Out.Char("'"); Out.Ln;*)
     http^.connectionFlag := Internet.Write(http^.socket, http^.reqHeader[2]^);
-        Out.String("sending '"); Out.String(http^.reqHeader[3]^); Out.Char("'"); Out.Ln;
+    (*    Out.String("sending '"); Out.String(http^.reqHeader[3]^); Out.Char("'"); Out.Ln;*)
     http^.connectionFlag := Internet.Write(http^.socket, http^.reqHeader[3]^);
-        Out.String("sending '"); Out.String(http^.reqHeader[4]^); Out.Char("'"); Out.Ln;
+     (*   Out.String("sending '"); Out.String(http^.reqHeader[4]^); Out.Char("'"); Out.Ln;*)
     http^.connectionFlag := Internet.Write(http^.socket, http^.reqHeader[4]^);
 
     header := readHeader(http);
@@ -284,34 +284,20 @@ BEGIN
     buff := NIL;
     readFailure := FALSE; eof := FALSE;
     REPEAT
-      Out.String("repeat"); Out.Ln;
       Empty(tmpBuff);
       http^.connectionFlag := Internet.ReadBuf(http^.socket, tmpBuff^, readThisTime);
       IF readThisTime < 0 THEN readFailure := TRUE; Out.String("read failure"); Out.Ln END;
-      IF readThisTime = 0 THEN eof := TRUE; Out.String("eol=true"); Out.Ln END;
+      IF readThisTime = 0 THEN eof := TRUE; Out.String("eof"); Out.Ln END;
       readAll := readAll + readThisTime;
-      Out.String("readThisTime="); Out.Int(readThisTime, 0); Out.Ln;
-      Out.String("readAll="); Out.Int(readAll, 0); Out.Ln;
+      Out.String("downloaded "); Out.Int(readAll, 0); Out.String(" bytes."); Out.Ln;
       IF buff = NIL THEN
         strUtils.appendNumChars(tmpBuff, readThisTime, buff, 0);
       ELSE
         strUtils.appendNumChars(tmpBuff, readThisTime, buff, LEN(buff^));
       END;
-     (* Out.String("-----------------------------"); Out.Ln;
-      Out.String("tmpBuff is: '"); Out.String(tmpBuff^); Out.Char("'"); Out.Ln;
-      Out.String("-----------------------------"); Out.Ln;
-      Out.String("buff is: '"); Out.String(buff^); Out.Char("'"); Out.Ln;
-      Out.String("-----------------------------"); Out.Ln;*)
-      Out.String("reached until"); Out.Ln;
-      IF http^.connectionFlag THEN Out.String("true") ELSE Out.String("false") END; Out.Ln;
-      Out.String("len tmpBuff "); Out.Int(LEN(tmpBuff^), 0); Out.Ln;
-      Out.String("len buff "); Out.Int(LEN(buff^), 0); Out.Ln;
-      Out.String("content length "); Out.Int(http^.rspnContentLength, 0); Out.Ln;
     UNTIL (readAll >= http^.rspnContentLength) OR eof OR readFailure OR ~http^.connectionFlag OR (http^.rspnContentLength = 0);
   UNTIL eof OR (readAll >= http^.rspnContentLength);
-    Out.String("until exited"); Out.Ln;
   Internet.Disconnect(http^.socket);
-  Out.String("disconnected"); Out.Ln;
   http^.rspnBody := buff;
   RETURN buff
 END get;
