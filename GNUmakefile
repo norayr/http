@@ -44,7 +44,7 @@ build_deps:
 	done
 
 buildThis:
-	cd $(BUILD) && $(VOC) -s $(mkfile_dir_path)/src/http.Mod
+	cd $(BUILD) && $(VOC) -s $(mkfile_dir_path)/src/hexIntStr.Mod  $(mkfile_dir_path)/src/http.Mod
 
 tests:
 	cd $(BUILD) && $(VOC) $(mkfile_dir_path)/test/testHttp.Mod -m
