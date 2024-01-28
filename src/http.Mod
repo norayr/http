@@ -143,10 +143,6 @@ BEGIN
       val[i+1] := 0X
     END;
     INC(i);
-    (*
-    Out.String("length is '"); Out.String(val^); Out.String("'"); Out.Ln;
-    Out.String("current character is '"); Out.Int(ORD(val[i-1]), 0); Out.String("'"); Out.Ln;
-    *)
  UNTIL (val[i-1] = 0X) OR (i = Strings.Length(buff)-1);
  RETURN val;
 END getHeader;
@@ -168,11 +164,9 @@ BEGIN
   REPEAT
     http^.connectionFlag := Internet.Read(http^.socket, buff^);
     header[i] := buff[0];
-    (*      Out.String("got character: "); Out.Int(ORD(buff[0]), 0); Out.Ln;*)
     IF (header[i] = 0DX) THEN
       http^.connectionFlag := Internet.Read(http^.socket, buff^);
       INC(i); header[i] := buff[0];
-               (*  Out.String("got character: "); Out.Int(ORD(buff[0]), 0); Out.Ln;*)
       IF (header[i] = 0AX) THEN
         http^.connectionFlag := Internet.Read(http^.socket, buff^);
         INC(i); header[i] := buff^[0];
@@ -185,7 +179,6 @@ BEGIN
     END;
     INC(i);
     header[i] := 0X;
-(*    Out.String("header is '"); Out.String(header^); Out.Char("'"); Out.Ln;*)
   UNTIL headerBool;
   RETURN header
 END readHeader;
@@ -200,22 +193,15 @@ VAR
 BEGIN
   isLengthFound := FALSE;
   len := Strings.Length(hdr);
-  Out.String("header length is "); Out.Int(len, 0); Out.Ln;
 
   (* getting string like 'HTTP/1.1 200 OK', hopefully *)
   http^.rspnPstrings := strUtils.string2pstrings(hdr);
 strUtils.string2pstring(http^.rspnPstrings^[0]^, http^.rspnFirstLine);
-           Out.String("first line: '"); Out.String(http^.rspnFirstLine^);
-           Out.Char("'"); Out.Ln;
   i := 1;
   REPEAT
-          Out.Int(i, 0); Out.String(": ");
-          Out.String(http^.rspnPstrings^[i]^); Out.Ln;
     j := strUtils.Pos(':', http^.rspnPstrings^[i]^, 0);
     Strings.Extract(http^.rspnPstrings^[i]^, 0, j, key);
-          Out.String("key: '"); Out.String(key); Out.Char("'"); Out.Ln;
     strUtils.getTillEOL(http^.rspnPstrings^[i]^, j+1, val);
-          Out.String("val: '"); Out.String(val); Out.Char("'"); Out.Ln;
     IF key = hdrDate THEN strUtils.string2pstring(val, http^.rspnDate) END;
     IF key = hdrServer THEN strUtils.string2pstring(val, http^.rspnServer) END;
     IF key = hdrLastModified THEN strUtils.string2pstring(val, http^.rspnLastModified) END;
@@ -225,7 +211,7 @@ strUtils.string2pstring(http^.rspnPstrings^[0]^, http^.rspnFirstLine);
       isLengthFound := TRUE;
       IntStr.StrToInt(val, http^.rspnContentLength, res);
       IF res # IntStr.strAllRight THEN
-        Out.String("not number"); Out.Ln; HALT(1)
+        Out.String("expected content lengith is not number"); Out.Ln; HALT(1)
       ELSE
         Out.String("got content length: "); Out.Int(http^.rspnContentLength, 0); Out.Ln
       END;
@@ -260,14 +246,11 @@ BEGIN
     NEW(tmpBuff, http^.rspnContentLength);
     readFailure := FALSE; eof := FALSE;
     REPEAT
-           Out.String("emptying tmpbuff"); Out.Ln; Out.Ln;
       Empty(tmpBuff);
-           Out.String("emptied tmpbuff"); Out.Ln; Out.Ln;
       http^.connectionFlag := Internet.ReadBuf(http^.socket, tmpBuff^, readThisTime);
       IF readThisTime < 0 THEN readFailure := TRUE; Out.String("read failure"); Out.Ln END;
-      IF readThisTime = 0 THEN eof := TRUE; Out.String("eof"); Out.Ln END;
+      IF readThisTime = 0 THEN eof := TRUE END;
       readAll := readAll + readThisTime;
-      (*Out.String("downloaded "); Out.Int(readAll, 0); Out.String(" bytes."); Out.Ln;*)
       Out.Char('.');
       IF buff = NIL THEN
         strUtils.appendNumChars(tmpBuff, readThisTime, buff, 0);
@@ -302,20 +285,12 @@ VAR
 BEGIN
   strUtils.zeroStr(len);
   i := 0;
-      Out.String("reading hopefully next chunk size"); Out.Ln;
   REPEAT
     http^.connectionFlag := Internet.ReadBytes(http^.socket, tmp, 1);
     len[i] := tmp[0];
-    Out.String("iteration "); Out.Int(i, 0); Out.Ln;
-    strUtils.dumpStr(len);
-    Out.String("----"); Out.Ln;
     INC(i)
   UNTIL (i = LEN(len)) OR (tmp[0] = 0AX) ;
-  Out.String("after the loop"); Out.Ln;
-  strUtils.dumpStr(len);
   fixChunkStr(len);
-  Out.String("after the fix"); Out.Ln;
-  strUtils.dumpStr(len);
   hexIntStr.StrToInt(len, out, res);
   IF res # hexIntStr.strAllRight THEN Out.String("failed to get next chunk size"); Out.Ln; HALT(5); END;
   IF out < 0 THEN Out.String("next chunk size negative, this indicates bug in the http module, halting"); Out.Ln; HALT(5); END;
@@ -347,7 +322,6 @@ BEGIN
     REPEAT
       nextChunkSize := getNextChunkSize(http);
       IF nextChunkSize > 0 THEN
-            Out.String("next chunk size is "); Out.Int(nextChunkSize, 0); Out.Ln;
          NEW(tmpBuff, nextChunkSize+1);
          NEW(smBuff, 3);
          i := 0;
@@ -356,23 +330,13 @@ BEGIN
            tmpBuff[i] := smBuff[0]; INC(i); Out.Char('.');
          UNTIL i = nextChunkSize;
            expectCRLF(http);
-         Out.String("read chunk:"); Out.Ln;
-         strUtils.dumpStr(tmpBuff^);
-         Out.String("------------"); Out.Ln;
          readAll := readAll + nextChunkSize;
-         Out.Int(nextChunkSize, 0); Out.String("   "); Out.Int(readAll, 0); Out.Ln;
          IF buff = NIL THEN
            strUtils.appendNumChars(tmpBuff, nextChunkSize, buff, 0);
-              Out.String("appended when nil"); Out.Ln;
          ELSE
            strUtils.appendNumChars(tmpBuff, nextChunkSize, buff, LEN(buff^));
-              Out.String("appended"); Out.Ln;
          END;
-         Out.String("now buff is "); Out.Ln;
-         strUtils.dumpStr(tmpBuff^);
-         Out.String("------------"); Out.Ln;
       ELSE
-        Out.String("next chunk size is not > 0"); Out.Ln;
         eof := TRUE
       END;
       Empty(tmpBuff);
@@ -406,12 +370,9 @@ BEGIN
     sendHeaders(http);
     header := readHeader(http);
     processHeader(http, header^);
-          Out.String("headers processed"); Out.Ln;
     IF http^.rspnContentLength # 0 THEN
-         Out.String("calling getknwn"); Out.Ln;
       http^.rspnBody := getKnownLength(http)
     ELSIF ((http^.rspnTransferEncoding # NIL) & (http^.rspnTransferEncoding^ = "chunked")) THEN
-          Out.String("need to get chunked"); Out.Ln;
       http^.rspnBody := getChunked(http)
     END;
   Internet.Disconnect(http^.socket);
@@ -427,20 +388,15 @@ BEGIN
           + Strings.Length(val) + 2 (* 2 for ": " *)
           + 3; (* for eol: 0DX, 0AX, 0X *)
   NEW(header, headerLength);
-    Out.String("header is now '"); Out.String(header^); Out.Char("'"); Out.Ln;
   COPY(key, header^);
-    Out.String("header is now '"); Out.String(header^); Out.Char("'"); Out.Ln;
   Strings.Append(": ", header^);
-    Out.String("header is now '"); Out.String(header^); Out.Char("'"); Out.Ln;
   Strings.Append(val, header^);
 
-    Out.String("header is now '"); Out.String(header^); Out.Char("'"); Out.Ln;
 
   tmp := Strings.Length(header^);
   header^[tmp] := 0DX;
   header^[tmp+1] := 0AX;
   header^[tmp+2] := 0X;
-    Out.String("header is now '"); Out.String(header^); Out.Char("'"); Out.Ln;
   RETURN header
 END nextHeaderLine;
 
@@ -494,7 +450,6 @@ BEGIN
   NEW(out1, Strings.Length(http^.path^)+1);
   COPY(http^.path^, out0^);
   IF (out0^ = "/") OR (out0^ = "") THEN
-         Out.String("DEBUG: out0="); Out.String(out0^); Out.Ln;
      NEW(out1, Strings.Length(defName));
      COPY(defName, out1^);
   ELSE
@@ -504,14 +459,12 @@ BEGIN
   END;
   F := Files.New(out1^);
   IF F # NIL THEN
-    Out.String("file created"); Out.Ln;
     Files.Set(R, F, 0);
     i := 0;
     REPEAT
       Files.Write(R, http^.rspnBody[i]);
       INC(i)
     UNTIL i >= size;
-    Out.String("file written "); Out.Int(i, 0); Out.Ln;
     Files.Register(F);
   ELSE
     Out.String("failed to create file "); Out.String(out1^); Out.Ln;
