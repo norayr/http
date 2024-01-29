@@ -233,14 +233,17 @@ strUtils.string2pstring(http^.rspnPstrings^[0]^, http^.rspnFirstLine);
   IF ~isLengthFound THEN http^.rspnContentLength := 0 END
 END processHeader;
 
-PROCEDURE getKnownLength(VAR http: httpClient): strTypes.pstring;
+(* i don't know why do i keep this, i guess because it works. (:
+   this implementation reallocates,
+   and it is not good, can cause fragmentation, and takes time.
+   when the content length is known
+   it is possible to avoid it, like in the next function *)
+PROCEDURE getKnownLengthRealloc(VAR http: httpClient): strTypes.pstring;
 VAR
   buff, tmpBuff: strTypes.pstring;
-  firstRead: BOOLEAN;
   readFailure: BOOLEAN; eof: BOOLEAN;
   readThisTime, readAll: LONGINT;
 BEGIN
-    firstRead := TRUE;
     readThisTime := 0; readAll := 0;
     buff := NIL;
     NEW(tmpBuff, http^.rspnContentLength);
@@ -257,6 +260,34 @@ BEGIN
       ELSE
         strUtils.appendNumChars(tmpBuff, readThisTime, buff, LEN(buff^));
       END;
+    UNTIL (readAll >= http^.rspnContentLength) OR eof OR readFailure OR ~http^.connectionFlag OR (http^.rspnContentLength = 0);
+  Out.Ln;
+  http^.rspnBody := buff;
+  RETURN buff;
+END getKnownLengthRealloc;
+
+(* the following is without unnecessary reallocations *)
+PROCEDURE getKnownLength(VAR http: httpClient): strTypes.pstring;
+VAR
+  buff, tmpBuff: strTypes.pstring;
+  readFailure: BOOLEAN; eof: BOOLEAN;
+  readThisTime, readAll, curpos: LONGINT;
+BEGIN
+    curpos := 0;
+    readThisTime := 0; readAll := 0;
+    buff := NIL;
+    NEW(tmpBuff, http^.rspnContentLength);
+    NEW(buff, http^.rspnContentLength);
+    readFailure := FALSE; eof := FALSE;
+    REPEAT
+      Empty(tmpBuff);
+      http^.connectionFlag := Internet.ReadBuf(http^.socket, tmpBuff^, readThisTime);
+      IF readThisTime < 0 THEN readFailure := TRUE; Out.String("read failure"); Out.Ln END;
+      IF readThisTime = 0 THEN eof := TRUE END;
+      readAll := readAll + readThisTime;
+      Out.Char('.');
+        strUtils.copyBytes(tmpBuff^, buff^, curpos, readThisTime);
+        curpos := curpos + readThisTime;
     UNTIL (readAll >= http^.rspnContentLength) OR eof OR readFailure OR ~http^.connectionFlag OR (http^.rspnContentLength = 0);
   Out.Ln;
   http^.rspnBody := buff;
@@ -311,11 +342,9 @@ END expectCRLF;
 PROCEDURE getChunked(VAR http: httpClient): strTypes.pstring;
 VAR
   buff, tmpBuff, smBuff: strTypes.pstring;
-  firstRead: BOOLEAN;
   readFailure: BOOLEAN; eof: BOOLEAN;
   nextChunkSize, readAll, i: LONGINT;
 BEGIN
-    firstRead := TRUE;
     readAll := 0;
     buff := NIL; tmpBuff := NIL;
     readFailure := FALSE; eof := FALSE;
@@ -371,6 +400,7 @@ BEGIN
     header := readHeader(http);
     processHeader(http, header^);
     IF http^.rspnContentLength # 0 THEN
+      (*http^.rspnBody := getKnownLength(http)*)
       http^.rspnBody := getKnownLength(http)
     ELSIF ((http^.rspnTransferEncoding # NIL) & (http^.rspnTransferEncoding^ = "chunked")) THEN
       http^.rspnBody := getChunked(http)
