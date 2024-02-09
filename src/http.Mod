@@ -72,6 +72,17 @@ TYPE
                   Save* : PROCEDURE(VAR http: httpClient);
   END;
 
+PROCEDURE dumpHeaders(VAR hdrs: headers);
+VAR
+  i: LONGINT;
+BEGIN
+  i := 0;
+  REPEAT
+    Out.Int(i, 0); Out.String("  "); Out.String(hdrs^[i]^); Out.Ln;
+    INC(i)
+  UNTIL i = LEN(hdrs^);
+END dumpHeaders;
+
 PROCEDURE Empty(VAR string: strTypes.pstring);
 VAR i : LONGINT;
 BEGIN
@@ -234,11 +245,8 @@ strUtils.string2pstring(http^.rspnPstrings^[0]^, http^.rspnFirstLine);
   IF ~isLengthFound THEN http^.rspnContentLength := 0 END
 END processHeader;
 
-(* i don't know why do i keep this, i guess because it works. (:
-   this implementation reallocates,
-   and it is not good, can cause fragmentation, and takes time.
-   when the content length is known
-   it is possible to avoid it, like in the next function *)
+   (* this implementation reallocates,
+      it is necessary when the content length is not known *)
 PROCEDURE getKnownLengthRealloc(VAR http: httpClient): strTypes.pstring;
 VAR
   buff, tmpBuff: strTypes.pstring;
@@ -386,6 +394,38 @@ BEGIN
     UNTIL i = LEN(http^.reqHeader^);
 END sendHeaders;
 
+PROCEDURE headersToString*(VAR hdrs: headers): strUtils.pstring;
+VAR
+  i, j, all, alli: LONGINT;
+  pstr: strUtils.pstring;
+BEGIN
+  (* calculating size *)
+  i := 0; all := 0;
+  REPEAT
+    j := 0;
+    REPEAT
+      INC(j)
+    UNTIL j = LEN(hdrs^[i]^);
+    all := all + j;    Out.Int(j, 0); Out.String(" "); Out.Int(all, 0); Out.Ln;
+    INC(i)
+  UNTIL i = LEN(hdrs^);
+     Out.String(" all is "); Out.Int(all, 0); Out.Ln;
+
+  NEW(pstr, all);
+  i := 0; alli := 0;
+  REPEAT
+    j := 0;
+    REPEAT
+      pstr[alli] := hdrs^[i]^[j];
+               Out.String("line "); Out.Int(i, 0); Out.String(" char ");
+               Out.Int(j, 0); Out.String(" val "); Out.Char(pstr[alli]); Out.Ln;
+      INC(j); INC(alli)
+    UNTIL j = LEN(hdrs^[i]^);
+    INC(i)
+  UNTIL i = LEN(hdrs^);
+  RETURN pstr
+END headersToString;
+
 PROCEDURE get*(VAR http: httpClient): strTypes.pstring;
 VAR
   header: strTypes.pstring;
@@ -519,6 +559,8 @@ BEGIN
   http^.clearState := clearstate;
   http^.Save := save;
   formReqHeader(http);
+  (*dumpHeaders(http^.reqHeader);*)
+
 
   http^.rspnPstrings          := NIL;
   http^.rspnFirstLine         := NIL;
