@@ -34,6 +34,7 @@ CONST
 TYPE
 
   httpClient* = POINTER TO httpClientDesc;
+  headers*    = POINTER TO ARRAY OF strTypes.pstring;
 
   httpClientDesc* = RECORD
     host-, port-, path- : strTypes.pstring;
@@ -43,7 +44,7 @@ TYPE
                version- : strTypes.pstring;
                     eol : ARRAY 2 OF CHAR;
                    null : ARRAY 1 OF CHAR;
-             reqHeader- : POINTER TO ARRAY OF strTypes.pstring;
+             reqHeader- : headers;
           rspnPstrings- : strTypes.pstrings;
          rspnFirstLine- : strTypes.pstring;
               rspnDate- : strTypes.pstring;
