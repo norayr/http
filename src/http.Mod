@@ -394,7 +394,7 @@ BEGIN
     UNTIL i = LEN(http^.reqHeader^);
 END sendHeaders;
 
-PROCEDURE headersToString*(VAR hdrs: headers): strUtils.pstring;
+PROCEDURE headersToString*(hdrs: headers): strUtils.pstring;
 VAR
   i, j, all, alli: LONGINT;
   pstr: strUtils.pstring;
@@ -406,7 +406,7 @@ BEGIN
     REPEAT
       INC(j)
     UNTIL j = LEN(hdrs^[i]^);
-    all := all + j;    Out.Int(j, 0); Out.String(" "); Out.Int(all, 0); Out.Ln;
+    all := all + j;
     INC(i)
   UNTIL i = LEN(hdrs^);
      Out.String(" all is "); Out.Int(all, 0); Out.Ln;
@@ -417,8 +417,11 @@ BEGIN
     j := 0;
     REPEAT
       pstr[alli] := hdrs^[i]^[j];
-               Out.String("line "); Out.Int(i, 0); Out.String(" char ");
-               Out.Int(j, 0); Out.String(" val "); Out.Char(pstr[alli]); Out.Ln;
+
+               Out.String("line: "); Out.Int(i, 0);
+               Out.String(" char: "); Out.Int(j, 0);
+               Out.String(" val: '"); Out.Char(pstr[alli]);
+               Out.String("'; ord: "); Out.Int(ORD(pstr[alli]), 0); Out.Ln;
       INC(j); INC(alli)
     UNTIL j = LEN(hdrs^[i]^);
     INC(i)
