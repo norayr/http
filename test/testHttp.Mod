@@ -19,7 +19,7 @@ END testH2S;
 
 PROCEDURE testClient;
 VAR
-  h: http.httpClient;
+  h: http.Client;
   answer: strTypes.pstring;
 BEGIN
 (* this tests chunked downloads

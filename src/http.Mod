@@ -33,10 +33,10 @@ CONST
 
 TYPE
 
-  httpClient* = POINTER TO httpClientDesc;
+  Client* = POINTER TO ClientDesc;
   headers*    = POINTER TO ARRAY OF strTypes.pstring;
 
-  httpClientDesc* = RECORD
+  ClientDesc* = RECORD
     host-, port-, path- : strTypes.pstring;
                  socket : Internet.Socket;
          connectionFlag : BOOLEAN;
@@ -65,11 +65,11 @@ TYPE
              rspnCFRAY- : strTypes.pstring;
               rspnBody- : strTypes.pstring;
 
-                Create* : PROCEDURE(host, port, path: ARRAY OF CHAR): httpClient;
-                   Get* : PROCEDURE(VAR http: httpClient): strTypes.pstring;
-          setUserAgent* : PROCEDURE(VAR http: httpClient; ua: ARRAY OF CHAR);
-            clearState* : PROCEDURE(VAR http: httpClient);
-                  Save* : PROCEDURE(VAR http: httpClient);
+                Create* : PROCEDURE(host, port, path: ARRAY OF CHAR): Client;
+                   Get* : PROCEDURE(VAR http: Client): strTypes.pstring;
+          setUserAgent* : PROCEDURE(VAR http: Client; ua: ARRAY OF CHAR);
+            clearState* : PROCEDURE(VAR http: Client);
+                  Save* : PROCEDURE(VAR http: Client);
   END;
 
 PROCEDURE dumpHeaders(VAR hdrs: headers);
@@ -95,7 +95,7 @@ BEGIN
   UNTIL i = LEN(string^) -1;
 END Empty;
 
-PROCEDURE clearstate(VAR http: httpClient);
+PROCEDURE clearstate(VAR http: Client);
 BEGIN
   http^.rspnPstrings          := NIL;
   http^.rspnFirstLine         := NIL;
@@ -159,7 +159,7 @@ BEGIN
  RETURN val;
 END getHeader;
 
-PROCEDURE readHeader(VAR http: httpClient):strTypes.pstring;
+PROCEDURE readHeader(VAR http: Client):strTypes.pstring;
 VAR
   valueContentLength: LONGINT;
   valueContentLengthString: strTypes.pstring;
@@ -195,7 +195,7 @@ BEGIN
   RETURN header
 END readHeader;
 
-PROCEDURE processHeader(VAR http: httpClient; VAR hdr: ARRAY OF CHAR);
+PROCEDURE processHeader(VAR http: Client; VAR hdr: ARRAY OF CHAR);
 VAR
   len, i, j: INTEGER;
   key: ARRAY 64 OF CHAR;
@@ -247,7 +247,7 @@ END processHeader;
 
    (* this implementation reallocates,
       it is necessary when the content length is not known *)
-PROCEDURE getKnownLengthRealloc(VAR http: httpClient): strTypes.pstring;
+PROCEDURE getKnownLengthRealloc(VAR http: Client): strTypes.pstring;
 VAR
   buff, tmpBuff: strTypes.pstring;
   readFailure: BOOLEAN; eof: BOOLEAN;
@@ -276,7 +276,7 @@ BEGIN
 END getKnownLengthRealloc;
 
 (* the following is without unnecessary reallocations *)
-PROCEDURE getKnownLength(VAR http: httpClient): strTypes.pstring;
+PROCEDURE getKnownLength(VAR http: Client): strTypes.pstring;
 VAR
   buff, tmpBuff: strTypes.pstring;
   readFailure: BOOLEAN; eof: BOOLEAN;
@@ -316,7 +316,7 @@ BEGIN
   UNTIL i = 0;
 END fixChunkStr;
 
-PROCEDURE getNextChunkSize(VAR http: httpClient): LONGINT;
+PROCEDURE getNextChunkSize(VAR http: Client): LONGINT;
 VAR
   tmp: ARRAY 2 OF CHAR;
   len: ARRAY 64 OF CHAR;
@@ -337,7 +337,7 @@ BEGIN
   RETURN out;
 END getNextChunkSize;
 
-PROCEDURE expectCRLF(VAR http: httpClient);
+PROCEDURE expectCRLF(VAR http: Client);
   VAR
     tmp, ref: POINTER TO ARRAY OF CHAR;
 BEGIN
@@ -348,7 +348,7 @@ BEGIN
   IF tmp^ # ref^ THEN Out.String("crlf expected, got "); Out.String(tmp^); Out.Ln; HALT(5); END;
 END expectCRLF;
 
-PROCEDURE getChunked(VAR http: httpClient): strTypes.pstring;
+PROCEDURE getChunked(VAR http: Client): strTypes.pstring;
 VAR
   buff, tmpBuff, smBuff: strTypes.pstring;
   readFailure: BOOLEAN; eof: BOOLEAN;
@@ -383,7 +383,7 @@ BEGIN
 END getChunked;
 
 
-PROCEDURE sendHeaders(VAR http: httpClient);
+PROCEDURE sendHeaders(VAR http: Client);
 VAR
   i: INTEGER;
 BEGIN
@@ -426,7 +426,7 @@ BEGIN
   RETURN pstr
 END headersToString;
 
-PROCEDURE get*(VAR http: httpClient): strTypes.pstring;
+PROCEDURE get*(VAR http: Client): strTypes.pstring;
 VAR
   header: strTypes.pstring;
 BEGIN
@@ -471,7 +471,7 @@ BEGIN
   RETURN header
 END nextHeaderLine;
 
-PROCEDURE formReqHeader(VAR http: httpClient);
+PROCEDURE formReqHeader(VAR http: Client);
 VAR
   pstr: strTypes.pstring;
   len, tmp: INTEGER;
@@ -503,12 +503,12 @@ BEGIN
   Strings.Append(http^.null, http^.reqHeader[4]^);
 END formReqHeader;
 
-PROCEDURE setuseragent*(VAR http: httpClient; ua: ARRAY OF CHAR);
+PROCEDURE setuseragent*(VAR http: Client; ua: ARRAY OF CHAR);
 BEGIN
   strUtils.string2pstring(ua, http^.userAgent)
 END setuseragent;
 
-PROCEDURE save(VAR http: httpClient);
+PROCEDURE save(VAR http: Client);
 VAR
   F: Files.File; R: Files.Rider;
   out0, out1: strTypes.pstring;
@@ -542,9 +542,9 @@ BEGIN
   END
 END save;
 
-PROCEDURE Create*(host, port, path: ARRAY OF CHAR): httpClient;
+PROCEDURE Create*(host, port, path: ARRAY OF CHAR): Client;
 VAR
-  http: httpClient;
+  http: Client;
 BEGIN
   NEW(http);
   http^.eol[0] := 0DX; http^.eol[1] := 0AX; http^.null[0] := 0X;
