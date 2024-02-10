@@ -416,15 +416,16 @@ BEGIN
   REPEAT
     j := 0;
     REPEAT
-      pstr[alli] := hdrs^[i]^[j];
-
+      IF hdrs^[i]^[j] # 0X THEN
+        pstr[alli] := hdrs^[i]^[j];
+        INC(alli);
                Out.String("line num: "); Out.Int(i, 0);
                Out.String("; char num: "); Out.Int(j, 0);
                Out.String("; ord: "); Out.Int(ORD(pstr[alli]), 0);
                Out.String("; val: '"); Out.Char(pstr[alli]); Out.Char("'");
                Out.Ln;
-
-      INC(j); INC(alli)
+      END;
+      INC(j);
     UNTIL j = LEN(hdrs^[i]^);
     INC(i)
   UNTIL i = LEN(hdrs^);
