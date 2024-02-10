@@ -418,10 +418,12 @@ BEGIN
     REPEAT
       pstr[alli] := hdrs^[i]^[j];
 
-               Out.String("line: "); Out.Int(i, 0);
-               Out.String(" char: "); Out.Int(j, 0);
-               Out.String(" val: '"); Out.Char(pstr[alli]);
-               Out.String("'; ord: "); Out.Int(ORD(pstr[alli]), 0); Out.Ln;
+               Out.String("line num: "); Out.Int(i, 0);
+               Out.String("; char num: "); Out.Int(j, 0);
+               Out.String("; ord: "); Out.Int(ORD(pstr[alli]), 0);
+               Out.String("; val: '"); Out.Char(pstr[alli]); Out.Char("'");
+               Out.Ln;
+
       INC(j); INC(alli)
     UNTIL j = LEN(hdrs^[i]^);
     INC(i)
