@@ -394,7 +394,7 @@ BEGIN
     UNTIL i = LEN(http^.reqHeader^);
 END sendHeaders;
 
-PROCEDURE headersToString*(hdrs: headers): strUtils.pstring;
+PROCEDURE headersToString*(hdrs: headers; VAR ln: LONGINT): strUtils.pstring;
 VAR
   i, j, all, alli: LONGINT;
   pstr: strUtils.pstring;
@@ -431,6 +431,13 @@ BEGIN
     INC(i)
   UNTIL i = LEN(hdrs^);
   pstr[alli] := 0X;
+               Out.String("line num: "); Out.Int(i, 0);
+               Out.String("; char num: "); Out.Int(j, 0);
+               Out.String("; array index: "); Out.Int(alli, 0);
+               Out.String("; ord: "); Out.Int(ORD(pstr[alli]), 0);
+               Out.String("; val: '"); Out.Char(pstr[alli]); Out.Char("'");
+               Out.Ln;
+  ln := alli+1;
   RETURN pstr
 END headersToString;
 

@@ -5,15 +5,17 @@ PROCEDURE testH2S;
 VAR
  hdrs: http.headers;
  pstr: strTypes.pstring;
+ ln: LONGINT;
 BEGIN
   NEW(hdrs, 2);
   NEW(hdrs[0], 4 + 1);
   NEW(hdrs[1], 5 + 1);
   COPY("http", hdrs[0]^);
   COPY("maemo", hdrs[1]^);
-  pstr := http.headersToString(hdrs);
+  pstr := http.headersToString(hdrs, ln);
   Out.String(pstr^); Out.Ln; Out.Ln;
   strUtils.dumpAllChars(pstr^);
+  Out.String("length is "); Out.Int(ln, 0); Out.Ln;
 END testH2S;
 
 
@@ -38,8 +40,7 @@ END testClient;
 BEGIN
 
 (* testing headers to string *)
-(*testH2S;*)
-
+testH2S;
+(* testing client *)
 testClient;
-
 END testHttp.
