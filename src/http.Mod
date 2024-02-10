@@ -420,6 +420,7 @@ BEGIN
         pstr[alli] := hdrs^[i]^[j];
                Out.String("line num: "); Out.Int(i, 0);
                Out.String("; char num: "); Out.Int(j, 0);
+               Out.String("; array index: "); Out.Int(alli, 0);
                Out.String("; ord: "); Out.Int(ORD(pstr[alli]), 0);
                Out.String("; val: '"); Out.Char(pstr[alli]); Out.Char("'");
                Out.Ln;
