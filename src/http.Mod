@@ -429,6 +429,7 @@ BEGIN
     UNTIL j = LEN(hdrs^[i]^);
     INC(i)
   UNTIL i = LEN(hdrs^);
+  pstr[alli] := 0X;
   RETURN pstr
 END headersToString;
 
