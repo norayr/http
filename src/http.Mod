@@ -32,13 +32,18 @@ CONST
 
 
 TYPE
-
+  transport* = POINTER TO transportDesc;
+  transportDesc* = RECORD END;
+   bsdSocket* = POINTER TO bsdSocketDesc;
+   bsdSocketDesc = RECORD (transportDesc)
+          socket : Internet.Socket
+          END;
   Client* = POINTER TO ClientDesc;
   headers*    = POINTER TO ARRAY OF strTypes.pstring;
 
   ClientDesc* = RECORD
     host-, port-, path- : strTypes.pstring;
-                 socket : Internet.Socket;
+                   trn- : transport;
          connectionFlag : BOOLEAN;
              userAgent- : strTypes.pstring;
                version- : strTypes.pstring;
@@ -70,6 +75,11 @@ TYPE
           setUserAgent* : PROCEDURE(VAR http: Client; ua: ARRAY OF CHAR);
             clearState* : PROCEDURE(VAR http: Client);
                   Save* : PROCEDURE(VAR http: Client);
+               Connect* : PROCEDURE(VAR http: Client): BOOLEAN;
+            Disconnect* : PROCEDURE(VAR http: Client);
+                  Read* : PROCEDURE(VAR http: Client; VAR buf: ARRAY OF CHAR; bytesToRead: LONGINT): BOOLEAN;
+               ReadBuf* : PROCEDURE(VAR http: Client; VAR buf: ARRAY OF CHAR; VAR n: LONGINT): BOOLEAN; (* returns number of read bytes in n *)
+                 Write* : PROCEDURE(VAR http: Client; buf: ARRAY OF CHAR): BOOLEAN;
   END;
 
 PROCEDURE dumpHeaders(VAR hdrs: headers);
@@ -159,6 +169,68 @@ BEGIN
  RETURN val;
 END getHeader;
 
+PROCEDURE connector(VAR http: Client): BOOLEAN;
+BEGIN
+  http^.connectionFlag := FALSE;
+  IF http^.trn IS bsdSocket THEN
+    http^.connectionFlag := Internet.Connect(http^.host^, http^.port^, http^.trn(bsdSocket).socket);
+  ELSE
+    Out.String("http client is not initialized with bsd socket"); Out.Ln;
+    HALT(5);
+  END;
+  RETURN http^.connectionFlag;
+END connector;
+
+PROCEDURE disconnector(VAR http: Client);
+BEGIN
+  IF http^.trn IS bsdSocket THEN
+    Internet.Disconnect(http^.trn(bsdSocket).socket);
+  ELSE
+    Out.String("http client is not initialized with bsd socket"); Out.Ln;
+    HALT(5);
+  END;
+END disconnector;
+
+PROCEDURE reader(VAR http: Client; VAR buf: ARRAY OF CHAR; bytesToRead: LONGINT): BOOLEAN;
+BEGIN
+  http^.connectionFlag := FALSE;
+  IF http^.trn IS bsdSocket THEN
+    IF bytesToRead = -1 THEN
+      http^.connectionFlag := Internet.Read(http^.trn(bsdSocket).socket, buf)
+    ELSE
+      http^.connectionFlag := Internet.ReadBytes(http^.trn(bsdSocket).socket, buf, bytesToRead)
+    END;
+  ELSE
+    Out.String("http client is not initialized with bsd socket"); Out.Ln;
+    HALT(5);
+  END;
+  RETURN http^.connectionFlag
+END reader;
+
+PROCEDURE readBuf(VAR http: Client; VAR buf: ARRAY OF CHAR; VAR n: LONGINT): BOOLEAN;
+BEGIN
+  http^.connectionFlag := FALSE;
+  IF http^.trn IS bsdSocket THEN
+    http^.connectionFlag := Internet.ReadBuf(http^.trn(bsdSocket).socket, buf, n);
+  ELSE
+    Out.String("http client is not initialized with bsd socket"); Out.Ln;
+    HALT(5);
+  END;
+  RETURN http^.connectionFlag
+END readBuf;
+
+PROCEDURE writer(VAR http: Client; buf: ARRAY OF CHAR): BOOLEAN;
+BEGIN
+  http^.connectionFlag := FALSE;
+  IF http^.trn IS bsdSocket THEN
+    http^.connectionFlag := Internet.Write(http^.trn(bsdSocket).socket, buf);
+  ELSE
+     Out.String("http client is not initialized with bsd socket"); Out.Ln;
+    HALT(5);
+  END;
+  RETURN http^.connectionFlag
+END writer;
+
 PROCEDURE readHeader(VAR http: Client):strTypes.pstring;
 VAR
   valueContentLength: LONGINT;
@@ -174,16 +246,16 @@ BEGIN
   NEW(buff, 2);
   i := 0; headerBool := FALSE;
   REPEAT
-    http^.connectionFlag := Internet.Read(http^.socket, buff^);
+    http^.connectionFlag := http.Read(http, buff^, -1);
     header[i] := buff[0];
     IF (header[i] = 0DX) THEN
-      http^.connectionFlag := Internet.Read(http^.socket, buff^);
+      http^.connectionFlag := http.Read(http, buff^, -1);
       INC(i); header[i] := buff[0];
       IF (header[i] = 0AX) THEN
-        http^.connectionFlag := Internet.Read(http^.socket, buff^);
+        http^.connectionFlag := http.Read(http, buff^, -1);
         INC(i); header[i] := buff^[0];
         IF header[i] = 0DX THEN
-          http^.connectionFlag := Internet.Read(http^.socket, buff^);
+          http^.connectionFlag := http.Read(http, buff^, -1);
           INC(i); header[i] := buff^[0];
           IF header[i] = 0AX THEN headerBool := TRUE END;
         END;
@@ -259,7 +331,7 @@ BEGIN
     readFailure := FALSE; eof := FALSE;
     REPEAT
       Empty(tmpBuff);
-      http^.connectionFlag := Internet.ReadBuf(http^.socket, tmpBuff^, readThisTime);
+      http^.connectionFlag := http.ReadBuf(http, tmpBuff^, readThisTime);
       IF readThisTime < 0 THEN readFailure := TRUE; Out.String("read failure"); Out.Ln END;
       IF readThisTime = 0 THEN eof := TRUE END;
       readAll := readAll + readThisTime;
@@ -290,7 +362,7 @@ BEGIN
     readFailure := FALSE; eof := FALSE;
     REPEAT
       Empty(tmpBuff);
-      http^.connectionFlag := Internet.ReadBuf(http^.socket, tmpBuff^, readThisTime);
+      http^.connectionFlag := http.ReadBuf(http, tmpBuff^, readThisTime);
       IF readThisTime < 0 THEN readFailure := TRUE; Out.String("read failure"); Out.Ln END;
       IF readThisTime = 0 THEN eof := TRUE END;
       readAll := readAll + readThisTime;
@@ -326,7 +398,7 @@ BEGIN
   strUtils.zeroStr(len);
   i := 0;
   REPEAT
-    http^.connectionFlag := Internet.ReadBytes(http^.socket, tmp, 1);
+    http^.connectionFlag := http.Read(http, tmp, 1);
     len[i] := tmp[0];
     INC(i)
   UNTIL (i = LEN(len)) OR (tmp[0] = 0AX) ;
@@ -344,7 +416,7 @@ BEGIN
   NEW(tmp, 3); NEW(ref, 3);
   ref^[0] := 0DX;
   ref^[1] := 0AX;
-  http^.connectionFlag := Internet.ReadBytes(http^.socket, tmp^, 2);
+  http^.connectionFlag := http.Read(http, tmp^, 2);
   IF tmp^ # ref^ THEN Out.String("crlf expected, got "); Out.String(tmp^); Out.Ln; HALT(5); END;
 END expectCRLF;
 
@@ -364,7 +436,7 @@ BEGIN
          NEW(smBuff, 3);
          i := 0;
          REPEAT
-           http^.connectionFlag := Internet.ReadBytes(http^.socket, smBuff^, 1);
+           http^.connectionFlag := http.Read(http, smBuff^, 1);
            tmpBuff[i] := smBuff[0]; INC(i); Out.Char('.');
          UNTIL i = nextChunkSize;
            expectCRLF(http);
@@ -389,7 +461,7 @@ VAR
 BEGIN
     i := 0;
     REPEAT
-      http^.connectionFlag := Internet.Write(http^.socket, http^.reqHeader[i]^);
+      http^.connectionFlag := http.Write(http, http^.reqHeader[i]^);
       INC(i)
     UNTIL i = LEN(http^.reqHeader^);
 END sendHeaders;
@@ -446,7 +518,7 @@ VAR
   header: strTypes.pstring;
 BEGIN
   http^.clearState(http);
-  http^.connectionFlag := Internet.Connect(http^.host^, http^.port^, http^.socket);
+  http^.connectionFlag := http.Connect(http);
   IF ~http^.connectionFlag THEN
     Out.String("Connection failed");
     Out.Ln;
@@ -461,7 +533,7 @@ BEGIN
     ELSIF ((http^.rspnTransferEncoding # NIL) & (http^.rspnTransferEncoding^ = "chunked")) THEN
       http^.rspnBody := getChunked(http)
     END;
-  Internet.Disconnect(http^.socket);
+  http.Disconnect(http);
   RETURN http^.rspnBody
 END get;
 
@@ -560,6 +632,7 @@ END save;
 PROCEDURE Create*(host, port, path: ARRAY OF CHAR): Client;
 VAR
   http: Client;
+  socket: bsdSocket;
 BEGIN
   NEW(http);
   http^.eol[0] := 0DX; http^.eol[1] := 0AX; http^.null[0] := 0X;
@@ -597,6 +670,13 @@ BEGIN
   http^.rspnCFRAY             := NIL;
   http^.rspnBody              := NIL;
 
+  NEW(socket);
+  http^.trn := socket;
+  http.Connect := connector;
+  http.Disconnect := disconnector;
+  http.Read := reader;
+  http.ReadBuf := readBuf;
+  http.Write := writer;
   RETURN http
 END Create;
 
