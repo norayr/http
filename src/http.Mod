@@ -558,7 +558,7 @@ BEGIN
   RETURN header
 END nextHeaderLine;
 
-PROCEDURE formReqHeader*(VAR http: Client);
+PROCEDURE formReqHeader*(http: Client);
 VAR
   pstr: strTypes.pstring;
   len, tmp: INTEGER;
