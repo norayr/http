@@ -42,8 +42,8 @@ TYPE
   headers*    = POINTER TO ARRAY OF strTypes.pstring;
 
   ClientDesc* = RECORD
-    host-, port-, path- : strTypes.pstring;
-                   trn- : transport;
+    host*, port*, path* : strTypes.pstring;
+                   trn* : transport;
         connectionFlag* : BOOLEAN;
              userAgent- : strTypes.pstring;
                version- : strTypes.pstring;
