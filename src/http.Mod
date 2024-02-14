@@ -71,7 +71,7 @@ TYPE
               rspnBody* : strTypes.pstring;
 
                 Create* : PROCEDURE(host, port, path: ARRAY OF CHAR): Client;
-                   Get* : PROCEDURE(VAR http: Client): strTypes.pstring;
+                   Get* : PROCEDURE(http: Client): strTypes.pstring;
           setUserAgent* : PROCEDURE(VAR http: Client; ua: ARRAY OF CHAR);
             clearState* : PROCEDURE(VAR http: Client);
                   Save* : PROCEDURE(VAR http: Client);
@@ -513,7 +513,7 @@ BEGIN
   RETURN pstr
 END headersToString;
 
-PROCEDURE get*(VAR http: Client): strTypes.pstring;
+PROCEDURE get*(http: Client): strTypes.pstring;
 VAR
   header: strTypes.pstring;
 BEGIN
