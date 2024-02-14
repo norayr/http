@@ -5,8 +5,8 @@ CONST
   defName = "unknown.html";
   defReqHeaderLength = 5;
   defHeaderLength = 1024;
-     defUserAgent = "oberon-http-client/1.0";
-   defHttpVersion = "HTTP/1.1";
+    defUserAgent- = "oberon-http-client/1.0";
+  defHttpVersion- = "HTTP/1.1";
         defGetStr = "GET";
        defHostStr = "HOST";
          defUAStr = "User-Agent";
@@ -46,29 +46,29 @@ TYPE
                    trn* : transport;
         connectionFlag* : BOOLEAN;
              userAgent- : strTypes.pstring;
-               version- : strTypes.pstring;
-                    eol : ARRAY 2 OF CHAR;
-                   null : ARRAY 1 OF CHAR;
+               version* : strTypes.pstring;
+                   eol* : ARRAY 2 OF CHAR;
+                  null* : ARRAY 1 OF CHAR;
              reqHeader- : headers;
-          rspnPstrings- : strTypes.pstrings;
-         rspnFirstLine- : strTypes.pstring;
-              rspnDate- : strTypes.pstring;
-            rspnServer- : strTypes.pstring;
-      rspnLastModified- : strTypes.pstring;
-              rspnETag- : strTypes.pstring;
-      rspnAcceptRanges- : strTypes.pstring;
-     rspnContentLength- : LONGINT;
-              rspnVary- : strTypes.pstring;
-       rspnContentType- : strTypes.pstring;
-  rspnTransferEncoding- : strTypes.pstring;
-        rspnConnection- : strTypes.pstring;
-      rspnCacheControl- : strTypes.pstring;
-           rspnExpires- : strTypes.pstring;
-          rspnLocation- : strTypes.pstring;
-          rspnReportTo- : strTypes.pstring;
-               rspnNEL- : strTypes.pstring;
-             rspnCFRAY- : strTypes.pstring;
-              rspnBody- : strTypes.pstring;
+          rspnPstrings* : strTypes.pstrings;
+         rspnFirstLine* : strTypes.pstring;
+              rspnDate* : strTypes.pstring;
+            rspnServer* : strTypes.pstring;
+      rspnLastModified* : strTypes.pstring;
+              rspnETag* : strTypes.pstring;
+      rspnAcceptRanges* : strTypes.pstring;
+     rspnContentLength* : LONGINT;
+              rspnVary* : strTypes.pstring;
+       rspnContentType* : strTypes.pstring;
+  rspnTransferEncoding* : strTypes.pstring;
+        rspnConnection* : strTypes.pstring;
+      rspnCacheControl* : strTypes.pstring;
+           rspnExpires* : strTypes.pstring;
+          rspnLocation* : strTypes.pstring;
+          rspnReportTo* : strTypes.pstring;
+               rspnNEL* : strTypes.pstring;
+             rspnCFRAY* : strTypes.pstring;
+              rspnBody* : strTypes.pstring;
 
                 Create* : PROCEDURE(host, port, path: ARRAY OF CHAR): Client;
                    Get* : PROCEDURE(VAR http: Client): strTypes.pstring;
@@ -105,7 +105,7 @@ BEGIN
   UNTIL i = LEN(string^) -1;
 END Empty;
 
-PROCEDURE clearstate(VAR http: Client);
+PROCEDURE clearstate*(VAR http: Client);
 BEGIN
   http^.rspnPstrings          := NIL;
   http^.rspnFirstLine         := NIL;
@@ -558,7 +558,7 @@ BEGIN
   RETURN header
 END nextHeaderLine;
 
-PROCEDURE formReqHeader(VAR http: Client);
+PROCEDURE formReqHeader*(VAR http: Client);
 VAR
   pstr: strTypes.pstring;
   len, tmp: INTEGER;
@@ -595,7 +595,7 @@ BEGIN
   strUtils.string2pstring(ua, http^.userAgent)
 END setuseragent;
 
-PROCEDURE save(VAR http: Client);
+PROCEDURE save*(VAR http: Client);
 VAR
   F: Files.File; R: Files.Rider;
   out0, out1: strTypes.pstring;
