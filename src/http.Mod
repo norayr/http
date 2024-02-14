@@ -74,7 +74,7 @@ TYPE
                    Get* : PROCEDURE(http: Client): strTypes.pstring;
           setUserAgent* : PROCEDURE(VAR http: Client; ua: ARRAY OF CHAR);
             clearState* : PROCEDURE(VAR http: Client);
-                  Save* : PROCEDURE(VAR http: Client);
+                  Save* : PROCEDURE(http: Client);
                Connect* : PROCEDURE(VAR http: Client): BOOLEAN;
             Disconnect* : PROCEDURE(VAR http: Client);
                   Read* : PROCEDURE(VAR http: Client; VAR buf: ARRAY OF CHAR; bytesToRead: LONGINT): BOOLEAN;
@@ -595,7 +595,7 @@ BEGIN
   strUtils.string2pstring(ua, http^.userAgent)
 END setuseragent;
 
-PROCEDURE save*(VAR http: Client);
+PROCEDURE save*(http: Client);
 VAR
   F: Files.File; R: Files.Rider;
   out0, out1: strTypes.pstring;
