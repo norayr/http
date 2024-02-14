@@ -44,7 +44,7 @@ TYPE
   ClientDesc* = RECORD
     host-, port-, path- : strTypes.pstring;
                    trn- : transport;
-        connectionFlag- : BOOLEAN;
+        connectionFlag* : BOOLEAN;
              userAgent- : strTypes.pstring;
                version- : strTypes.pstring;
                     eol : ARRAY 2 OF CHAR;
