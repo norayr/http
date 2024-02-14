@@ -45,7 +45,7 @@ TYPE
     host*, port*, path* : strTypes.pstring;
                    trn* : transport;
         connectionFlag* : BOOLEAN;
-             userAgent- : strTypes.pstring;
+             userAgent* : strTypes.pstring;
                version* : strTypes.pstring;
                    eol* : ARRAY 2 OF CHAR;
                   null* : ARRAY 1 OF CHAR;
