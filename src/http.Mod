@@ -1,6 +1,6 @@
 MODULE http;
 IMPORT IntStr := oocIntStr, Strings, Files, Out,
-       hexIntStr, Internet, strTypes, strUtils;
+       hexIntStr, Internet, strTypes, strUtils, Base64;
 CONST
   defName = "unknown.html";
   defReqHeaderLength = 5;
@@ -12,6 +12,7 @@ CONST
          defUAStr = "User-Agent";
      defAcceptStr = "Accept";
  defEverythingStr = "*/*";
+         defAuth  = "Basic";
 
               hdrDate = "Date";
             hdrServer = "Server";
@@ -29,6 +30,7 @@ CONST
           hdrReportTo = "Report-To";
                hdrNEL = "NEL";
              hdrCFRAY = "CF-RAY";
+              hdrAuth = "Authorization";
 
 
 TYPE
@@ -80,7 +82,10 @@ TYPE
                   Read* : PROCEDURE(VAR http: Client; VAR buf: ARRAY OF CHAR; bytesToRead: LONGINT): BOOLEAN;
                ReadBuf* : PROCEDURE(VAR http: Client; VAR buf: ARRAY OF CHAR; VAR n: LONGINT): BOOLEAN; (* returns number of read bytes in n *)
                  Write* : PROCEDURE(VAR http: Client; buf: ARRAY OF CHAR): BOOLEAN;
+          appendHeader* : PROCEDURE(VAR http: Client; hdr: strTypes.pstring);
+         appendAuthHdr* : PROCEDURE(VAR http: Client; user, password: ARRAY OF CHAR);
   END;
+
 
 PROCEDURE dumpHeaders(VAR hdrs: headers);
 VAR
@@ -558,6 +563,24 @@ BEGIN
   RETURN header
 END nextHeaderLine;
 
+PROCEDURE appendHdrLine*(VAR h: Client; hdr: strTypes.pstring);
+VAR
+  i: LONGINT;
+  oldLen: LONGINT;
+  newHeaders: headers;
+BEGIN
+  oldLen := LEN(h^.reqHeader^);
+  NEW(newHeaders, oldLen+1);
+  i := 0;
+  REPEAT
+      newHeaders^[i] := h^.reqHeader^[i];
+    INC(i)
+  UNTIL i = oldLen-1;
+  newHeaders^[i] := hdr;
+  newHeaders^[i+1] := h^.reqHeader^[i];
+  h^.reqHeader := newHeaders;
+END appendHdrLine;
+
 PROCEDURE formReqHeader*(http: Client);
 VAR
   pstr: strTypes.pstring;
@@ -629,6 +652,30 @@ BEGIN
   END
 END save;
 
+PROCEDURE appendUserPasswdHdr*(VAR h: Client; user, password: ARRAY OF CHAR);
+VAR
+  credentials, b64credentials, aHdrVal, authHeader: strTypes.pstring;
+BEGIN
+  NEW(credentials, Strings.Length(user)+ Strings.Length(password) + 1(* +1 is enough since we don't want string to be fixed in Base64.fix *));
+  Base64.fixToIncludeEOL := FALSE;
+  COPY(user, credentials^);
+  Strings.Append(":", credentials^);
+  Strings.Append(password, credentials^);
+     Out.String("formed cred line: '"); Out.String(credentials^); Out.Char("'");
+     Out.Ln;
+  NEW(b64credentials, Strings.Length(credentials^)*2(* to certainly fit base64 encoded string *));
+  Base64.EncodeString(credentials^, b64credentials^);
+      Out.String("b64 is '"); Out.String(b64credentials^); Out.Ln;
+  NEW(aHdrVal,  Strings.Length(defAuth) (* Basic *) + Strings.Length(b64credentials^) + 3 (* whitespace and null *));
+  COPY(defAuth, aHdrVal^); Strings.Append(" ", aHdrVal^);
+  Strings.Append(b64credentials^, aHdrVal^);
+  authHeader := nextHeaderLine(hdrAuth, aHdrVal^);
+        Out.String("ahdrval '"); Out.String(aHdrVal^); Out.Char("'"); Out.Ln;
+  dumpHeaders(h^.reqHeader);
+  appendHdrLine(h, authHeader);
+  dumpHeaders(h^.reqHeader);
+END appendUserPasswdHdr;
+
 PROCEDURE Create*(host, port, path: ARRAY OF CHAR): Client;
 VAR
   http: Client;
@@ -677,6 +724,10 @@ BEGIN
   http.Read := reader;
   http.ReadBuf := readBuf;
   http.Write := writer;
+
+  http.appendHeader  := appendHdrLine;
+  http.appendAuthHdr := appendUserPasswdHdr;
+
   RETURN http
 END Create;
 
