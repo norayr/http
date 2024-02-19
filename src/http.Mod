@@ -661,16 +661,12 @@ BEGIN
   COPY(user, credentials^);
   Strings.Append(":", credentials^);
   Strings.Append(password, credentials^);
-     Out.String("formed cred line: '"); Out.String(credentials^); Out.Char("'");
-     Out.Ln;
   NEW(b64credentials, Strings.Length(credentials^)*2(* to certainly fit base64 encoded string *));
   Base64.EncodeString(credentials^, b64credentials^);
-      Out.String("b64 is '"); Out.String(b64credentials^); Out.Ln;
   NEW(aHdrVal,  Strings.Length(defAuth) (* Basic *) + Strings.Length(b64credentials^) + 3 (* whitespace and null *));
   COPY(defAuth, aHdrVal^); Strings.Append(" ", aHdrVal^);
   Strings.Append(b64credentials^, aHdrVal^);
   authHeader := nextHeaderLine(hdrAuth, aHdrVal^);
-        Out.String("ahdrval '"); Out.String(aHdrVal^); Out.Char("'"); Out.Ln;
   appendHdrLine(h, authHeader);
 END appendUserPasswdHdr;
 
