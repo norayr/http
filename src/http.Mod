@@ -563,7 +563,7 @@ BEGIN
   RETURN header
 END nextHeaderLine;
 
-PROCEDURE appendHdrLine*(VAR h: Client; hdr: strTypes.pstring);
+PROCEDURE appendHdrLine*(h: Client; hdr: strTypes.pstring);
 VAR
   i: LONGINT;
   oldLen: LONGINT;
