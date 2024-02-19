@@ -82,8 +82,8 @@ TYPE
                   Read* : PROCEDURE(VAR http: Client; VAR buf: ARRAY OF CHAR; bytesToRead: LONGINT): BOOLEAN;
                ReadBuf* : PROCEDURE(VAR http: Client; VAR buf: ARRAY OF CHAR; VAR n: LONGINT): BOOLEAN; (* returns number of read bytes in n *)
                  Write* : PROCEDURE(VAR http: Client; buf: ARRAY OF CHAR): BOOLEAN;
-          appendHeader* : PROCEDURE(VAR http: Client; hdr: strTypes.pstring);
-         appendAuthHdr* : PROCEDURE(VAR http: Client; user, password: ARRAY OF CHAR);
+          appendHeader* : PROCEDURE(http: Client; hdr: strTypes.pstring);
+         appendAuthHdr* : PROCEDURE(http: Client; user, password: ARRAY OF CHAR);
   END;
 
 
@@ -652,7 +652,7 @@ BEGIN
   END
 END save;
 
-PROCEDURE appendUserPasswdHdr*(VAR h: Client; user, password: ARRAY OF CHAR);
+PROCEDURE appendUserPasswdHdr*(h: Client; user, password: ARRAY OF CHAR);
 VAR
   credentials, b64credentials, aHdrVal, authHeader: strTypes.pstring;
 BEGIN
@@ -671,9 +671,7 @@ BEGIN
   Strings.Append(b64credentials^, aHdrVal^);
   authHeader := nextHeaderLine(hdrAuth, aHdrVal^);
         Out.String("ahdrval '"); Out.String(aHdrVal^); Out.Char("'"); Out.Ln;
-  dumpHeaders(h^.reqHeader);
   appendHdrLine(h, authHeader);
-  dumpHeaders(h^.reqHeader);
 END appendUserPasswdHdr;
 
 PROCEDURE Create*(host, port, path: ARRAY OF CHAR): Client;
