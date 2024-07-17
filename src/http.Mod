@@ -14,22 +14,22 @@ CONST
  defEverythingStr = "*/*";
          defAuth  = "Basic";
 
-              hdrDate = "Date";
-            hdrServer = "Server";
-      hdrLastModified = "Last-Modified";
-              hdrETag = "ETag";
-      hdrAcceptRanges = "Accept-Ranges";
-     hdrContentLength = "Content-Length";
-              hdrVary = "Vary";
-       hdrContentType = "Content-Type";
-  hdrTransferEncoding = "Transfer-Encoding";
-        hdrConnection = "keey-alive";
-      hdrCacheControl = "Cache-Control";
-           hdrExpires = "Expires";
-          hdrLocation = "Location";
-          hdrReportTo = "Report-To";
-               hdrNEL = "NEL";
-             hdrCFRAY = "CF-RAY";
+              hdrDate = "date";
+            hdrServer = "server";
+      hdrLastModified = "last-modified";
+              hdrETag = "etag";
+      hdrAcceptRanges = "accept-ranges";
+     hdrContentLength = "content-length";
+              hdrVary = "vary";
+       hdrContentType = "content-type";
+  hdrTransferEncoding = "transfer-encoding";
+        hdrConnection = "keep-alive";
+      hdrCacheControl = "cache-control";
+           hdrExpires = "expires";
+          hdrLocation = "location";
+          hdrReportTo = "report-to";
+               hdrNEL = "nel";
+             hdrCFRAY = "cf-ray";
               hdrAuth = "Authorization";
 
 
@@ -86,6 +86,19 @@ TYPE
          appendAuthHdr* : PROCEDURE(http: Client; user, password: ARRAY OF CHAR);
   END;
 
+
+PROCEDURE ToLower(VAR stringVar: ARRAY OF CHAR);
+VAR
+  i: INTEGER;
+BEGIN
+  i := 0;
+  WHILE stringVar[i] # 0X DO
+    IF (stringVar[i] >= "A") & (stringVar[i] <= "Z") THEN
+      stringVar[i] := CHR(ORD(stringVar[i]) + 20H);
+    END;
+    INC(i);
+  END;
+END ToLower;
 
 PROCEDURE dumpHeaders(VAR hdrs: headers);
 VAR
@@ -291,6 +304,7 @@ strUtils.string2pstring(http^.rspnPstrings^[0]^, http^.rspnFirstLine);
     j := strUtils.Pos(':', http^.rspnPstrings^[i]^, 0);
     Strings.Extract(http^.rspnPstrings^[i]^, 0, j, key);
     strUtils.getTillEOL(http^.rspnPstrings^[i]^, j+1, val);
+    ToLower(key);
     IF key = hdrDate THEN strUtils.string2pstring(val, http^.rspnDate) END;
     IF key = hdrServer THEN strUtils.string2pstring(val, http^.rspnServer) END;
     IF key = hdrLastModified THEN strUtils.string2pstring(val, http^.rspnLastModified) END;
