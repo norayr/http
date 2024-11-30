@@ -1,6 +1,6 @@
 DEPEND = github.com/norayr/strutils github.com/norayr/base64 github.com/norayr/Internet
 
-VOC = /opt/voc/bin/voc
+VOC = voc
 mkfile_path := $(abspath $(lastword $(MAKEFILE_LIST)))
 mkfile_dir_path := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 $(info $$mkfile_path is [${mkfile_path}])
