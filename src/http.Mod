@@ -387,11 +387,11 @@ END getKnownLengthRealloc;
 PROCEDURE getKnownLength(VAR http: Client): strTypes.pstring;
 VAR
   buff, tmpBuff: strTypes.pstring;
-  readFailure, eof: BOOLEAN;
+  eof: BOOLEAN;
   readThisTime, readAll, remaining, chunk, i: LONGINT;
 BEGIN
   readAll := 0;
-  readFailure := FALSE; eof := FALSE;
+  eof := FALSE;
 
   (* rspnBody is a pstring, so allocate one extra byte for 0X.
      Save writes only rspnContentLength bytes. *)
@@ -399,26 +399,25 @@ BEGIN
   i := 0;
   WHILE i < LEN(buff^) DO buff[i] := 0X; INC(i) END;
 
-  WHILE (readAll < http^.rspnContentLength) & ~eof & ~readFailure & http^.connectionFlag DO
+  WHILE (readAll < http^.rspnContentLength) & ~eof & http^.connectionFlag DO
     remaining := http^.rspnContentLength - readAll;
     chunk := remaining;
     IF chunk > 8192 THEN chunk := 8192 END;
 
-    (* +1 so transports that write a trailing 0X do not overflow.
-       We still copy only readThisTime data bytes. *)
+    (* +1 so low-level readers that add 0X do not overflow. *)
     NEW(tmpBuff, chunk + 1);
     i := 0;
     WHILE i < LEN(tmpBuff^) DO tmpBuff[i] := 0X; INC(i) END;
 
-    readThisTime := 0;
-    (* Use Read, not ReadBuf: Read can be asked for an exact maximum-sized
-       chunk.  For httpsPure this maps to TLS13Live.ReadAppMax. *)
-    http^.connectionFlag := http.Read(http, tmpBuff^, chunk);
+    (* ReadBuf returns the actual number of bytes in readThisTime.
+       This is important for HTTP and also for TLS, where one decrypted
+       TLS record may be bigger than the caller's requested chunk. *)
+    readThisTime := chunk;
+    http^.connectionFlag := http.ReadBuf(http, tmpBuff^, readThisTime);
 
-    IF ~http^.connectionFlag THEN
+    IF (~http^.connectionFlag) OR (readThisTime <= 0) THEN
       eof := TRUE
     ELSE
-      readThisTime := chunk;
       IF readThisTime > remaining THEN readThisTime := remaining END;
       i := 0;
       WHILE i < readThisTime DO
@@ -688,11 +687,12 @@ BEGIN
   NEW(out1, Strings.Length(http^.path^)+1);
   COPY(http^.path^, out0^);
   IF (out0^ = "/") OR (out0^ = "") THEN
-     NEW(out1, Strings.Length(defName));
+     NEW(out1, Strings.Length(defName)+1);
      COPY(defName, out1^);
   ELSE
     strUtils.RemoveRightChars(out0^, '/');
     pos := strUtils.Rpos(out0^, '/');
+    NEW(out1, Strings.Length(out0^)-pos);
     Strings.Extract(out0^, pos+1, Strings.Length(out0^)-pos-1, out1^);
   END;
   F := Files.New(out1^);
