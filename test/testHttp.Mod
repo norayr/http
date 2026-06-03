@@ -33,7 +33,7 @@ BEGIN
   (* this tests downloads of content with known length *)
   (*h := http.Create("10.115.1.63", "8080", "SETs.pdf");*)
   (* this tests downloads with authorization *)
-  h := http.Create("duckduckgo.com", "80", "/");
+  h := http.Create("pascal.hansotten.com", "80", "/");
   h.appendAuthHdr(h, "David", "qwerty");
   answer := h.Get(h);
   h.Save(h);
