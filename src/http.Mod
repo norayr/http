@@ -413,7 +413,20 @@ BEGIN
        This is important for HTTP and also for TLS, where one decrypted
        TLS record may be bigger than the caller's requested chunk. *)
     readThisTime := chunk;
+
+Out.String("body loop remaining="); Out.Int(remaining, 0);
+Out.String(" chunk="); Out.Int(chunk, 0);
+Out.String(" tmpLen="); Out.Int(LEN(tmpBuff^), 0);
+Out.Ln;
+
+
     http^.connectionFlag := http.ReadBuf(http, tmpBuff^, readThisTime);
+
+Out.String("after ReadBuf ok=");
+IF http^.connectionFlag THEN Out.String("true") ELSE Out.String("false") END;
+Out.String(" readThisTime="); Out.Int(readThisTime, 0);
+Out.String(" readAll="); Out.Int(readAll, 0);
+Out.Ln;
 
     IF (~http^.connectionFlag) OR (readThisTime <= 0) THEN
       eof := TRUE
