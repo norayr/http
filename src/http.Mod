@@ -249,39 +249,56 @@ BEGIN
   RETURN http^.connectionFlag
 END writer;
 
+PROCEDURE EnsureHeaderRoom(VAR header: strTypes.pstring; need: LONGINT);
+VAR
+  oldLen, newLen, i: LONGINT;
+  nh: strTypes.pstring;
+BEGIN
+  IF need >= LEN(header^) THEN
+    oldLen := LEN(header^);
+    newLen := oldLen * 2;
+    IF newLen < 128 THEN newLen := 128 END;
+    WHILE need >= newLen DO newLen := newLen * 2 END;
+    NEW(nh, newLen);
+    i := 0;
+    WHILE i < oldLen DO nh[i] := header[i]; INC(i) END;
+    WHILE i < newLen DO nh[i] := 0X; INC(i) END;
+    header := nh
+  END
+END EnsureHeaderRoom;
+
 PROCEDURE readHeader(VAR http: Client):strTypes.pstring;
 VAR
-  valueContentLength: LONGINT;
-  valueContentLengthString: strTypes.pstring;
   header, buff: strTypes.pstring;
   headerBool : BOOLEAN;
-  res: SHORTINT;
-  i: INTEGER;
-  n: INTEGER;
+  i: LONGINT;
 BEGIN
   NEW(header, defHeaderLength);
   Empty(header);
   NEW(buff, 2);
   i := 0; headerBool := FALSE;
+
   REPEAT
     http^.connectionFlag := http.Read(http, buff^, -1);
-    header[i] := buff[0];
-    IF (header[i] = 0DX) THEN
-      http^.connectionFlag := http.Read(http, buff^, -1);
-      INC(i); header[i] := buff[0];
-      IF (header[i] = 0AX) THEN
-        http^.connectionFlag := http.Read(http, buff^, -1);
-        INC(i); header[i] := buff^[0];
-        IF header[i] = 0DX THEN
-          http^.connectionFlag := http.Read(http, buff^, -1);
-          INC(i); header[i] := buff^[0];
-          IF header[i] = 0AX THEN headerBool := TRUE END;
-        END;
-      END;
-    END;
-    INC(i);
-    header[i] := 0X;
+    IF http^.connectionFlag THEN
+      EnsureHeaderRoom(header, i + 1);
+      header[i] := buff[0];
+      INC(i);
+      EnsureHeaderRoom(header, i);
+      header[i] := 0X;
+
+      IF i >= 4 THEN
+        IF (header[i-4] = 0DX) & (header[i-3] = 0AX) &
+           (header[i-2] = 0DX) & (header[i-1] = 0AX) THEN
+          headerBool := TRUE
+        END
+      END
+    ELSE
+      headerBool := TRUE
+    END
   UNTIL headerBool;
+
+  Out.String("header bytes: "); Out.Int(i, 0); Out.Ln;
   RETURN header
 END readHeader;
 

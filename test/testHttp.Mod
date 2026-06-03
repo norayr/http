@@ -31,10 +31,10 @@ BEGIN
  (* h := http.Create("xn--y9a5bft.xn--y9a3aq", "80", "/SETs.pdf");*)
 
   (* this tests downloads of content with known length *)
-  (*h := http.Create("norayr.am", "80", "/papers/SETs.pdf");*)
+  (*h := http.Create("10.115.1.63", "8080", "SETs.pdf");*)
   (* this tests downloads with authorization *)
-  h := http.Create("norayr.am", "80", "/f/SETs.pdf");
-  h.appendAuthHdr(h, "sona", "sona");
+  h := http.Create("duckduckgo.com", "80", "/");
+  h.appendAuthHdr(h, "David", "qwerty");
   answer := h.Get(h);
   h.Save(h);
 END testClient;
