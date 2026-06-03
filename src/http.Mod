@@ -304,52 +304,84 @@ END readHeader;
 
 PROCEDURE processHeader(VAR http: Client; VAR hdr: ARRAY OF CHAR);
 VAR
-  len, i, j: INTEGER;
-  key: ARRAY 64 OF CHAR;
-  val: ARRAY 512 OF CHAR;
+  i, j, k, n, plen: LONGINT;
+  key: ARRAY 128 OF CHAR;
+  val: ARRAY 4096 OF CHAR;
   res: SHORTINT;
   isLengthFound: BOOLEAN;
 BEGIN
   isLengthFound := FALSE;
-  len := Strings.Length(hdr);
 
   (* getting string like 'HTTP/1.1 200 OK', hopefully *)
   http^.rspnPstrings := strUtils.string2pstrings(hdr);
-strUtils.string2pstring(http^.rspnPstrings^[0]^, http^.rspnFirstLine);
+  strUtils.string2pstring(http^.rspnPstrings^[0]^, http^.rspnFirstLine);
+
   i := 1;
-  REPEAT
+  WHILE i < LEN(http^.rspnPstrings^) - 1 DO
     j := strUtils.Pos(':', http^.rspnPstrings^[i]^, 0);
-    Strings.Extract(http^.rspnPstrings^[i]^, 0, j, key);
-    strUtils.getTillEOL(http^.rspnPstrings^[i]^, j+1, val);
-    ToLower(key);
-    IF key = hdrDate THEN strUtils.string2pstring(val, http^.rspnDate) END;
-    IF key = hdrServer THEN strUtils.string2pstring(val, http^.rspnServer) END;
-    IF key = hdrLastModified THEN strUtils.string2pstring(val, http^.rspnLastModified) END;
-    IF key = hdrETag THEN strUtils.string2pstring(val, http^.rspnETag) END;
-    IF key = hdrAcceptRanges THEN strUtils.string2pstring(val, http^.rspnAcceptRanges) END;
-    IF key = hdrContentLength THEN
-      isLengthFound := TRUE;
-      IntStr.StrToInt(val, http^.rspnContentLength, res);
-      IF res # IntStr.strAllRight THEN
-        Out.String("expected content lengith is not number"); Out.Ln; HALT(1)
-      ELSE
-        Out.String("got content length: "); Out.Int(http^.rspnContentLength, 0); Out.Ln
+
+    IF j > 0 THEN
+      (* Copy header key safely. Some servers send very long header lines;
+         never let a fixed temporary buffer overflow. *)
+      k := 0;
+      WHILE k < LEN(key) DO key[k] := 0X; INC(k) END;
+      k := 0;
+      WHILE (k < j) & (k < LEN(key)-1) DO
+        key[k] := http^.rspnPstrings^[i]^[k];
+        INC(k)
       END;
+      key[k] := 0X;
+      ToLower(key);
+
+      (* Copy value safely, bounded by val size.  This may truncate very large
+         headers such as Report-To, Set-Cookie, CSP, etc.  That is OK for now;
+         we only need small values such as Content-Length and Transfer-Encoding
+         for the HTTP engine. *)
+      k := j + 1;
+      WHILE (http^.rspnPstrings^[i]^[k] = " ") OR (http^.rspnPstrings^[i]^[k] = 09X) DO INC(k) END;
+      n := 0;
+      WHILE (n < LEN(val)-1) &
+            (http^.rspnPstrings^[i]^[k] # 0X) &
+            (http^.rspnPstrings^[i]^[k] # 0DX) &
+            (http^.rspnPstrings^[i]^[k] # 0AX) DO
+        val[n] := http^.rspnPstrings^[i]^[k];
+        INC(n); INC(k)
+      END;
+      val[n] := 0X;
+
+      IF key = hdrDate THEN strUtils.string2pstring(val, http^.rspnDate) END;
+      IF key = hdrServer THEN strUtils.string2pstring(val, http^.rspnServer) END;
+      IF key = hdrLastModified THEN strUtils.string2pstring(val, http^.rspnLastModified) END;
+      IF key = hdrETag THEN strUtils.string2pstring(val, http^.rspnETag) END;
+      IF key = hdrAcceptRanges THEN strUtils.string2pstring(val, http^.rspnAcceptRanges) END;
+
+      IF key = hdrContentLength THEN
+        isLengthFound := TRUE;
+        IntStr.StrToInt(val, http^.rspnContentLength, res);
+        IF res # IntStr.strAllRight THEN
+          Out.String("expected content length is not number"); Out.Ln; HALT(1)
+        ELSE
+          Out.String("got content length: "); Out.Int(http^.rspnContentLength, 0); Out.Ln
+        END
+      END;
+
+      IF key = hdrVary THEN strUtils.string2pstring(val, http^.rspnVary) END;
+      IF key = hdrContentType THEN strUtils.string2pstring(val, http^.rspnContentType) END;
+      IF key = hdrTransferEncoding THEN strUtils.string2pstring(val, http^.rspnTransferEncoding) END;
+      IF key = hdrConnection THEN strUtils.string2pstring(val, http^.rspnConnection) END;
+      IF key = hdrCacheControl THEN strUtils.string2pstring(val, http^.rspnCacheControl) END;
+      IF key = hdrExpires THEN strUtils.string2pstring(val, http^.rspnExpires) END;
+      IF key = hdrLocation THEN strUtils.string2pstring(val, http^.rspnLocation) END;
+
+      (* These can be huge on modern sites. Store bounded/debug-safe value only. *)
+      IF key = hdrReportTo THEN strUtils.string2pstring(val, http^.rspnReportTo) END;
+      IF key = hdrNEL THEN strUtils.string2pstring(val, http^.rspnNEL) END;
+      IF key = hdrCFRAY THEN strUtils.string2pstring(val, http^.rspnCFRAY) END
     END;
 
-    IF key = hdrVary THEN strUtils.string2pstring(val, http^.rspnVary) END;
-    IF key = hdrContentType THEN strUtils.string2pstring(val, http^.rspnContentType) END;
-    IF key = hdrTransferEncoding THEN strUtils.string2pstring(val, http^.rspnTransferEncoding) END;
-    IF key = hdrConnection THEN strUtils.string2pstring(val, http^.rspnConnection) END;
-    IF key = hdrCacheControl THEN strUtils.string2pstring(val, http^.rspnCacheControl) END;
-    IF key = hdrExpires THEN strUtils.string2pstring(val, http^.rspnExpires) END;
-    IF key = hdrLocation THEN strUtils.string2pstring(val, http^.rspnLocation) END;
-    IF key = hdrReportTo THEN strUtils.string2pstring(val, http^.rspnReportTo) END;
-    IF key = hdrNEL THEN strUtils.string2pstring(val, http^.rspnNEL) END;
-    IF key = hdrCFRAY THEN strUtils.string2pstring(val, http^.rspnCFRAY) END;
-
     INC(i)
-  UNTIL i = LEN(http^.rspnPstrings^)-1;
+  END;
+
   IF ~isLengthFound THEN http^.rspnContentLength := 0 END
 END processHeader;
 
@@ -413,20 +445,7 @@ BEGIN
        This is important for HTTP and also for TLS, where one decrypted
        TLS record may be bigger than the caller's requested chunk. *)
     readThisTime := chunk;
-
-Out.String("body loop remaining="); Out.Int(remaining, 0);
-Out.String(" chunk="); Out.Int(chunk, 0);
-Out.String(" tmpLen="); Out.Int(LEN(tmpBuff^), 0);
-Out.Ln;
-
-
     http^.connectionFlag := http.ReadBuf(http, tmpBuff^, readThisTime);
-
-Out.String("after ReadBuf ok=");
-IF http^.connectionFlag THEN Out.String("true") ELSE Out.String("false") END;
-Out.String(" readThisTime="); Out.Int(readThisTime, 0);
-Out.String(" readAll="); Out.Int(readAll, 0);
-Out.Ln;
 
     IF (~http^.connectionFlag) OR (readThisTime <= 0) THEN
       eof := TRUE
