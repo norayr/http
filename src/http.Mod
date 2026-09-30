@@ -53,6 +53,9 @@ TYPE
              rspnCode* : LONGINT;  (** the status code, 200 etc., 0 if there was no answer *)
                    trn* : transport;
         connectionFlag* : BOOLEAN;
+              endClean* : BOOLEAN;  (** set by the transport: the connection ended properly (TLS:
+                                        close_notify); a body up to the end is complete only then *)
+          rspnComplete* : BOOLEAN;  (** the whole body arrived (length, last chunk or clean end) *)
              userAgent* : strTypes.pstring;
                version* : strTypes.pstring;
                    eol* : ARRAY 2 OF CHAR;
@@ -154,7 +157,8 @@ BEGIN
   http^.rspnNEL               := NIL;
   http^.rspnCFRAY             := NIL;
   http^.rspnBody              := NIL;
-
+  http^.endClean              := TRUE;
+  http^.rspnComplete          := FALSE
 END clearstate;
 
 PROCEDURE AppendEOLAndClean(buff: ARRAY OF CHAR; VAR buffClean: strTypes.pstring);
@@ -458,6 +462,12 @@ BEGIN
 
   IF readAll < LEN(buff^) THEN buff[readAll] := 0X END;
   IF verbose THEN Out.Ln; Out.String("body bytes read: "); Out.Int(readAll, 0); Out.Ln END;
+  http^.rspnComplete := readAll = http^.rspnContentLength;
+  IF ~http^.rspnComplete THEN
+    Out.String("http: the body ended early, "); Out.Int(readAll, 0); Out.String(" of ");
+    Out.Int(http^.rspnContentLength, 0); Out.String(" bytes"); Out.Ln;
+    http^.rspnContentLength := readAll
+  END;
   http^.rspnBody := buff;
   RETURN buff
 END getKnownLength;
@@ -527,6 +537,7 @@ BEGIN
       IF http^.connectionFlag THEN nextChunkSize := getNextChunkSize(http) END
     END
   END;
+  http^.rspnComplete := nextChunkSize = 0;
   IF nextChunkSize # 0 THEN Out.String("http: the chunked body ended early"); Out.Ln END;
   http^.rspnContentLength := readAll;
   RETURN buff
@@ -549,6 +560,8 @@ BEGIN
     IF verbose THEN Out.Char('.') END
   END;
   http^.rspnContentLength := readAll;
+  http^.rspnComplete := http^.endClean;
+  IF ~http^.endClean THEN Out.String("http: the connection ended without a proper close, the body may be cut"); Out.Ln END;
   RETURN buff
 END getToEnd;
 
@@ -619,12 +632,17 @@ BEGIN
       body := getChunked(http);
       IF body # NIL THEN http^.rspnBody := Terminated(body, http^.rspnContentLength) END
     ELSIF lengthFound THEN
-      IF http^.rspnContentLength > 0 THEN http^.rspnBody := getKnownLength(http) END
+      IF http^.rspnContentLength > 0 THEN http^.rspnBody := getKnownLength(http)
+      ELSE http^.rspnComplete := TRUE
+      END
     ELSIF (http^.rspnCode # 204) & (http^.rspnCode # 304) & (http^.rspnCode >= 200) THEN
       body := getToEnd(http);
       IF body # NIL THEN http^.rspnBody := Terminated(body, http^.rspnContentLength) END
+    ELSE http^.rspnComplete := TRUE  (* no body *)
     END;
-    IF http^.rspnBody = NIL THEN NEW(http^.rspnBody, 1); http^.rspnBody[0] := 0X; http^.rspnContentLength := 0 END
+    IF http^.rspnBody = NIL THEN
+      NEW(http^.rspnBody, 1); http^.rspnBody[0] := 0X; http^.rspnContentLength := 0
+    END
   END;
   http.Disconnect(http);
   RETURN http^.rspnBody
