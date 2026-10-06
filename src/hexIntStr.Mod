@@ -1,6 +1,6 @@
 MODULE hexIntStr;
 
-IMPORT Conv := oocConvTypes;
+IMPORT Conv := oocConvTypes;  (* polpo: Conv := ConvTypes *)
 
 TYPE
   ConvResults*= Conv.ConvResults;
