@@ -50,5 +50,10 @@ tests:
 	cd $(BUILD) && $(VOC) $(mkfile_dir_path)/test/testHttp.Mod -m
 	#build/testList
 
+.PHONY: test-auth
+test-auth: buildThis
+	cd $(BUILD) && $(VOC) -sFm $(mkfile_dir_path)/test/TestHttpAuth.Mod
+	$(BUILD)/TestHttpAuth
+
 clean:
 	if [ -d "$(BUILD)" ]; then rm -rf $(BLD); fi
